@@ -83,5 +83,5 @@ class Admin(BaseBotPlugin):
             return 'Module %s is not loaded.' % modname
         mod = getModule(p.__module__).load()
         reload(mod)
-        bot.service.disable_plugin(modname)
-        return self.do_mod_enable(self, serv, modname)
+        serv.disable_plugin(modname)
+        return self.do_mod_enable(serv, modname)
