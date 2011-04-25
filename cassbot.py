@@ -731,6 +731,10 @@ class CassBotService(service.MultiService):
                 log.err(None, "Trying to load state in plugin %s" % plugin.name())
 
     def saveStateToFile(self, statefile):
+        # XXX: this disables plugins when capturing their state to save. it
+        # probably shouldn't, so that admins can save settings whenever they
+        # like without restarting the whole bot
+
         self.state['plugins_enabled'] = self.pluginmap.keys()
         for pname in self.state['plugins_enabled']:
             self.disable_plugin(pname)
