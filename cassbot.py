@@ -26,22 +26,25 @@ class enabled_but_not_found:
         self.when_found = defer.Deferred()
 
 
-class IBotPlugin(Interface):
-    def name():
-        """
-        Return the name of this plugin.
-        """
+try:
+    IBotPlugin
+except NameError:
+    class IBotPlugin(Interface):
+        def name():
+            """
+            Return the name of this plugin.
+            """
 
-    def description():
-        """
-        Return a string describing what this plugin does, or None if there is
-        no need for a description.
-        """
+        def description():
+            """
+            Return a string describing what this plugin does, or None if there is
+            no need for a description.
+            """
 
-    def __call__():
-        """
-        Create an IBotPluginInstance instance of this class.
-        """
+        def __call__():
+            """
+            Create an IBotPluginInstance instance of this class.
+            """
 
 class IBotPluginInstance(Interface):
     def interestingMethods():
