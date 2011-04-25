@@ -537,6 +537,13 @@ class CassBotFactory(protocol.ReconnectingClientFactory):
         self.service.initialize_proto_state(p)
         return p
 
+    def clientConnectionFailed(self, connector, reason):
+        log.err(reason, 'Connection failed')
+        protocol.ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
+
+    def clientConnectionLost(self, connector, reason):
+        log.err(reason, 'Connection lost')
+        protocol.ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
 
 class CassBotService(service.MultiService):
     plugin_scan_period = 240
