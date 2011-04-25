@@ -828,9 +828,16 @@ def connect_endpoint_without_fuss(reactor, endpoint, factory):
     part.
     """
 
-    return reactor.connectTCP(endpoint._host, endpoint._port, factory,
-                              timeout=endpoint._timeout,
-                              bindAddress=endpoint._bindAddress)
-
+    if isinstance(endpoint, endpoints.TCP4ClientEndpoint):
+        return reactor.connectTCP(endpoint._host, endpoint._port, factory,
+                                  timeout=endpoint._timeout,
+                                  bindAddress=endpoint._bindAddress)
+    elif isinstance(endpoint, endpoints.SSL4ClientEndpoint):
+        return reactor.connectSSL(endpoint._host, endpoint._port, factory,
+                                  endpoint._sslContextFactory,
+                                  timeout=endpoint._timeout,
+                                  bindAddress=endpoint._bindAddress)
+    else:
+        raise RuntimeError("Don't know how to handle endpoint %s" % endpoint)
 
 # vim: set et sw=4 ts=4 :
