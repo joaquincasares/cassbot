@@ -291,7 +291,7 @@ class CassBotCore(irc.IRCClient):
             yield self.msg(channel, transform(line))
 
     def command_not_found(self, user, channel, cmd):
-        return self.address_msg(user, channel, "Sorry, I don't understand %r. :(" % cmd)
+        return self.address_msg(user, channel, "Sorry, I don't understand '%s'. :(" % cmd)
 
     ### methods called by the protocol
 
@@ -548,6 +548,7 @@ class CassBotFactory(protocol.ReconnectingClientFactory):
 class CassBotService(service.MultiService):
     plugin_scan_period = 240
     default_statefile = 'cassbot.state.db'
+    protocol_factory_class = CassBotFactory
 
     def __init__(self, desc, nickname='cassbot', init_channels=(), reactor=None,
                  statefile=None):
@@ -566,8 +567,7 @@ class CassBotService(service.MultiService):
             from twisted.internet import reactor
         self.reactor = reactor
 
-        self.endpoint_desc = desc
-        self.endpoint = endpoints.clientFromString(reactor, desc)
+        self.setupConnectionParams(desc)
 
         self.watcher_map = {}
         self.command_map = {}
@@ -577,26 +577,38 @@ class CassBotService(service.MultiService):
         # the plugin name (as given by the .name() classmethod).
         self.pluginmap = {}
 
-        self.pfactory = CassBotFactory()
+    def setupConnectionParams(self, desc):
+        self.endpoint_desc = desc
+        self.endpoint = endpoints.clientFromString(reactor, desc)
+        self.pfactory = protocol_factory_class()
 
-    def startService(self):
-        res = service.MultiService.startService(self)
+    def setupConnection(self):
         self.pfactory.service = self
         connect_endpoint_without_fuss(self.reactor, self.endpoint, self.pfactory)
-        try:
-            self.loadStateFromFile(self.statefile)
-        except (IOError, ValueError):
-            pass
-        return res
 
-    def stopService(self):
-        self.saveStateToFile(self.statefile)
+    def teardownConnection(self):
         self.pfactory.stopTrying()
         try:
             self.getbot().transport.loseConnection()
         except AttributeError:
             pass
         self.pfactory.service = None
+
+    def getbot(self):
+        return getattr(self.pfactory, 'prot', None)
+
+    def startService(self):
+        res = service.MultiService.startService(self)
+        try:
+            self.loadStateFromFile(self.statefile)
+        except (IOError, ValueError):
+            pass
+        self.setupConnection()
+        return res
+
+    def stopService(self):
+        self.saveStateToFile(self.statefile)
+        self.teardownConnection()
         return service.MultiService.stopService(self)
 
     @staticmethod
@@ -756,11 +768,8 @@ class CassBotService(service.MultiService):
         return '<%s object [%s]%s>' % (
             self.__class__.__name__,
             self.endpoint_desc,
-            ' (connected)' if hasattr(self.pfactory, 'prot') else ''
+            ' (connected)' if self.getbot() is not None else ''
         )
-
-    def getbot(self):
-        return self.pfactory.prot
 
 
 def require_priv(privname):
