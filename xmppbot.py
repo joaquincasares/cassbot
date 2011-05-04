@@ -194,14 +194,33 @@ class XMPPCassBot(muc.MUCClient):
 class XMPPCassBotService(cassbot.CassBotService):
     xmppbot = None
 
+    def __init__(self, user_jid, password, jabber_server=None, conference_server=None,
+                 nickname=None, init_channels=(), statefile='cassbot.state.db',
+                 reactor=None):
+        self.jid = jid.internJID(user_jid)
+        if nickname is None:
+            nickname = self.jid.user
+
+        cassbot.CassBotService.__init__(self, self.jid.full(), nickname=nickname,
+                                        init_channels=init_channels, reactor=reactor,
+                                        statefile=statefile)
+
+        self.password = password
+        if jabber_server is None:
+            jabber_server = self.jid.host
+        if conference_server is None:
+            conference_server = self.jid.host
+        self.jabber_server = jabber_server
+        self.conference_server = conference_server
+
     def setupConnectionParams(self, conffile):
         self.endpoint_desc = 'conffile=%s' % (conffile,)
 
     def setupConnection(self):
-        xmppclient = XMPPClient(jid.internJID(self.jid), self.password, self.jabber_server)
+        xmppclient = XMPPClient(self.jid, self.password, self.jabber_server)
         xmppclient.logTraffic = False
 
-        xmppbot = XMPPCassBot(self, self.alias)
+        xmppbot = XMPPCassBot(self, self.state['nickname'])
         xmppbot.conference_server = self.conference_server
         xmppbot.setHandlerParent(xmppclient)
 
