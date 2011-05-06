@@ -12,11 +12,11 @@ class OpenManhole(BaseBotPlugin):
         except KeyError:
             return None
 
-    def makeManhole(self, bot, port):
-        env = {'botserv': bot.service}
+    def makeManhole(self, botserv, port):
+        env = {'botserv': botserv}
         hole = internet.TCPServer(port, MagicManholeFactory(env))
         hole.setName(self.service_name)
-        hole.setServiceParent(bot.service)
+        hole.setServiceParent(botserv)
         return hole
 
     def command_open_manhole(self, bot, user, channel, args):
@@ -25,7 +25,7 @@ class OpenManhole(BaseBotPlugin):
         hole = self.getManhole(bot)
         if hole is not None:
             return bot.address_msg(user, channel, "Manhole is already open.")
-        self.makeManhole(bot, int(args[0]))
+        self.makeManhole(bot.service, int(args[0]))
         bot.address_msg(user, channel, 'Opened.')
 
     @defer.inlineCallbacks

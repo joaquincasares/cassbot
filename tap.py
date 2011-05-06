@@ -2,6 +2,7 @@ import os
 import shlex
 from twisted.internet import reactor
 from twisted.application import service
+from twisted.python import log
 
 nickname = os.environ.get('nickname', 'CassBotJr')
 channels = shlex.split(os.environ.get('channels', ''))
@@ -31,5 +32,13 @@ def setup():
 
     auto_admin = os.environ.get('auto_admin', os.environ['LOGNAME'])
     bot.auth.addPriv(auto_admin, 'admin')
+
+    auto_manhole = os.environ.get('auto_manhole')
+    if auto_manhole is not None:
+        port = int(auto_manhole)
+        d = bot.enable_plugin_by_name('OpenManhole')
+        d.addCallback(lambda p: p.makeManhole(bot, port))
+        d.addCallback(lambda _: log.msg("Auto-manhole opened on %d." % port))
+        d.addErrback(log.err, "Auto-manhole failed")
 
 reactor.callWhenRunning(setup)
