@@ -579,8 +579,8 @@ class CassBotService(service.MultiService):
 
     def setupConnectionParams(self, desc):
         self.endpoint_desc = desc
-        self.endpoint = endpoints.clientFromString(reactor, desc)
-        self.pfactory = protocol_factory_class()
+        self.endpoint = endpoints.clientFromString(self.reactor, desc)
+        self.pfactory = self.protocol_factory_class()
 
     def setupConnection(self):
         self.pfactory.service = self
