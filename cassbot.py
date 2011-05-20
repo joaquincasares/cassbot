@@ -8,7 +8,7 @@ from functools import wraps
 from itertools import imap, izip
 from fnmatch import fnmatch
 from twisted.words.protocols import irc
-from twisted.internet import defer, protocol, endpoints
+from twisted.internet import defer, protocol, endpoints, task
 from twisted.python import log
 from twisted.plugin import getPlugins, IPlugin
 from twisted.application import internet, service
@@ -210,6 +210,7 @@ class CassBotCore(irc.IRCClient):
         'msg'
     )
     mode = 'irc'
+    ping_interval = 120
 
     def __init__(self, nickname='cassbot'):
         # state that will be saved and reset on this object by the service
@@ -225,6 +226,7 @@ class CassBotCore(irc.IRCClient):
         self.channel_memberships = {}
         self.is_signed_on = False
         self.init_time = time.time()
+        self.pinglooper = None
 
         for mname in self.overrideable:
             realmethod = getattr(self, mname, noop)
@@ -375,6 +377,8 @@ class CassBotCore(irc.IRCClient):
             self.join(chan)
         self.is_signed_on = True
         self.sign_on_time = time.time()
+        self.pinglooper = task.LoopingCall(self.pingServer)
+        self.pinglooper.start(self.ping_interval, now=False)
 
     def userJoined(self, user, channel):
         self.channel_memberships.setdefault(channel, set()).add(user)
@@ -413,7 +417,13 @@ class CassBotCore(irc.IRCClient):
             del self.factory.prot
         except AttributeError:
             pass
+        if self.pinglooper is not None:
+            self.pinglooper.stop()
+            self.pinglooper = None
         return irc.IRCClient.connectionLost(self, reason)
+
+    def pingServer(self):
+        return self.sendLine('PING %s' % (self.servername,))
 
     def lineReceived(self, line):
         if getattr(self, 'debug_show_input', False):
@@ -783,7 +793,7 @@ class CassBotService(service.MultiService):
         for pname in self.state.get('plugins_enabled', ()):
             d = self.enable_plugin_by_name(pname)
             d.addErrback(log.err, "Loading plugin %s" % pname)
-        self.state['join_channels'] = set(self.state.get('join_channels', ()))
+        self.state['channels'] = set(self.state.get('channels', ()))
 
     def __str__(self):
         return '<%s object [%s]%s>' % (
