@@ -1,7 +1,7 @@
 from cassbot import (BaseBotPlugin, enabled_but_not_found, require_priv,
                      require_priv_in_channel, natural_list)
 from twisted.internet import defer
-from twisted.python import failure
+from twisted.python import failure, log
 from twisted.plugin import getModule
 
 def makelist(i):
