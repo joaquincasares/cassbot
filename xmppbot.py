@@ -17,7 +17,7 @@ class XMPPCassBotAdapter(cassbot.CassBotCore):
     def join(self, channel, key=None):
         if key is not None:
             raise NotImplemented("can't use channel keys through xmpp client")
-        return self.factory.chanjoin(channel)
+        return self.factory.join(channel)
 
     def leave(self, channel, reason=None):
         self.join_channels.discard(channel)
@@ -68,6 +68,9 @@ class XMPPCassBotAdapter(cassbot.CassBotCore):
     def requestChannelMode(self, channel):
         pass
 
+    def pingServer(self):
+        return self.factory.pingServer()
+
 class XMPPCassBot(muc.MUCClient):
     mode = 'xmpp'
     ping_interval = 120
@@ -91,9 +94,6 @@ class XMPPCassBot(muc.MUCClient):
         self.botservice.initialize_proto_state(prot)
         prot.signedOn()
 
-        self.pinglooper = task.LoopingCall(self.pingServer)
-        self.pinglooper.start(self.ping_interval, now=False)
-
     def resetDelay(self):
         # dummy
         pass
@@ -101,15 +101,10 @@ class XMPPCassBot(muc.MUCClient):
     def connectionLost(self, reason):
         if self.prot:
             self.prot.connectionLost(reason)
-        try:
-            self.pinglooper.stop()
-            del self.pinglooper
-        except AttributeError:
-            pass
         log.err(reason, "disconnected")
         return muc.MUCClient.connectionLost(self, reason)
 
-    def chanjoin(self, channel):
+    def join(self, channel):
         try:
             room, server = channel.split('@', 1)
         except ValueError:
@@ -119,7 +114,7 @@ class XMPPCassBot(muc.MUCClient):
             server, nick = server.split('/', 1)
         except ValueError:
             nick = self.nickname
-        d = self.join(server, room, nick)
+        d = muc.MUCClient.join(self, server, room, nick)
         d.addCallback(self._joinComplete)
         d.addErrback(log.err, "Could not join %s" % (room,))
 
