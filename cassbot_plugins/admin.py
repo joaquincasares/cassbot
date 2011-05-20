@@ -1,5 +1,5 @@
 from cassbot import (BaseBotPlugin, enabled_but_not_found, require_priv,
-                     require_priv_in_channel)
+                     require_priv_in_channel, natural_list)
 from twisted.internet import defer
 from twisted.python import failure
 from twisted.plugin import getModule
@@ -75,6 +75,51 @@ class Admin(BaseBotPlugin):
         for arg in args:
             output = self.do_mod_reload(bot.service, arg)
             yield bot.address_msg(user, channel, output)
+
+    @require_priv('admin')
+    @defer.inlineCallbacks
+    def command_join(self, bot, user, channel, args):
+        if len(args) != 1:
+            yield bot.address_msg(user, channel, 'usage: join [channelname]')
+            return
+        try:
+            bot.join(args[0])
+        except Exception:
+            f = failure.Failure()
+            yield bot.address_msg(user, channel, f.getErrorMessage())
+            log.err(f, "Attempting to join %r on command from %r" % (args[0], user))
+        else:
+            yield bot.address_msg(user, channel, 'kay.')
+
+    @require_priv('admin')
+    @defer.inlineCallbacks
+    def command_part(self, bot, user, channel, args):
+        if len(args) == 0 and channel != bot.nickname:
+            args = [channel]
+        elif len(args) != 1:
+            yield bot.address_msg(user, channel, 'usage: part [channelname]')
+            return
+        try:
+            bot.service.leave(args[0])
+        except Exception:
+            f = failure.Failure()
+            yield bot.address_msg(user, channel, f.getErrorMessage())
+            log.err(f, "Attempting to join %r on command from %r" % (args[0], user))
+        else:
+            yield bot.address_msg(user, channel, 'kay.')
+
+    @require_priv('admin')
+    @defer.inlineCallbacks
+    def command_channels(self, bot, user, channel, args):
+        if len(args) != 0:
+            yield bot.address_msg(user, channel, 'usage: channels')
+            return
+        yield bot.address_msg(user, channel, 'configured to join: %s'
+                                             % natural_list(sorted(bot.join_channels)))
+
+    @require_priv('admin')
+    def command_die(self, bot, user, channel, args):
+        bot.service.reactor.callLater(0, bot.service.stopService)
 
     def do_mod_reload(self, serv, modname):
         try:
