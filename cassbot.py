@@ -214,7 +214,7 @@ class CassBotCore(irc.IRCClient):
     def __init__(self, nickname='cassbot'):
         # state that will be saved and reset on this object by the service
         self.nickname = nickname
-        self.join_channels = ()
+        self.join_channels = None
         self.cmd_prefix = None
 
         self.channels = set()
@@ -326,13 +326,20 @@ class CassBotCore(irc.IRCClient):
         self.channel_memberships[channel] = set()
         self.is_channel_synced[channel] = False
         self.add_channel(channel)
+        self.join_channels.add(channel)
         self.requestChannelMode(channel)
+
+    def leave(self, channel, reason=None):
+        self.join_channels.discard(channel)
+        return irc.IRCClient.leave(self, channel, reason=reason)
 
     def left(self, channel):
         self.leave_channel(channel)
 
     def kickedFrom(self, channel, kicker, message):
         self.leave_channel(channel)
+        if channel in self.join_channels:
+            self.join(channel)
 
     def modeChanged(self, user, channel, beingset, modes, args):
         if len(args) == 0:
@@ -726,9 +733,21 @@ class CassBotService(service.MultiService):
                 self.state['plugins'][pname] = pstate
         self.scan_plugins()
 
+    def join(self, channelname, channelkey=None):
+        bot = self.getbot()
+        self.state.setdefault('channels', set()).add(channelname)
+        if bot is not None:
+            return bot.join(channelname, key=channelkey)
+
+    def leave(self, channelname, reason=None):
+        bot = self.getbot()
+        self.state.get('channels', set()).discard(channelname)
+        if bot is not None:
+            return bot.leave(channelname, reason=reason)
+
     def initialize_proto_state(self, proto):
         proto.nickname = self.state['nickname']
-        proto.join_channels = self.state.get('channels', ())
+        proto.join_channels = self.state.get('channels', set())
         proto.cmd_prefix = self.state.get('cmd_prefix', None)
         proto.service = self
 
@@ -764,6 +783,7 @@ class CassBotService(service.MultiService):
         for pname in self.state.get('plugins_enabled', ()):
             d = self.enable_plugin_by_name(pname)
             d.addErrback(log.err, "Loading plugin %s" % pname)
+        self.state['join_channels'] = set(self.state.get('join_channels', ()))
 
     def __str__(self):
         return '<%s object [%s]%s>' % (

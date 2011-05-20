@@ -20,6 +20,7 @@ class XMPPCassBotAdapter(cassbot.CassBotCore):
         return self.factory.chanjoin(channel)
 
     def leave(self, channel, reason=None):
+        self.join_channels.discard(channel)
         return self.factory.leave(channel)
 
     def kick(self, channel, user, reason=None):
