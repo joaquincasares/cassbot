@@ -14,7 +14,11 @@ class BotLogger(BaseBotPlugin):
         return self.per_channel_blacklist
 
     def loadState(self, state):
-        self.per_channel_blacklist = state
+        if isinstance(state, dict):
+            self.per_channel_blacklist = state
+        else:
+            log.msg("Warning: discarding uncompliant per_channel_blacklist %r"
+                    % (state,))
 
     def command_blacklist(self, bot, user, chan, args):
         bl = self.per_channel_blacklist.setdefault(chan, set())
