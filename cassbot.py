@@ -575,7 +575,7 @@ class CassBotService(service.MultiService):
         self.statefile = statefile or self.default_statefile
         self.state = {
             'nickname': nickname,
-            'channels': init_channels,
+            'channels': set(init_channels),
             'cmd_prefix': None,
             'plugins': {},
         }
@@ -757,7 +757,7 @@ class CassBotService(service.MultiService):
 
     def initialize_proto_state(self, proto):
         proto.nickname = self.state['nickname']
-        proto.join_channels = self.state.get('channels', set())
+        proto.join_channels = self.state.setdefault('channels', set())
         proto.cmd_prefix = self.state.get('cmd_prefix', None)
         proto.service = self
 
