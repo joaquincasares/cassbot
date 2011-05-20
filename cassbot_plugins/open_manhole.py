@@ -57,6 +57,7 @@ class ReadlineyManhole(manhole.ColoredManhole):
             '\x01': self.handle_HOME,
             '\x05': self.handle_END,
             '\x08': self.handle_BACKSPACE,
+            '\xec': self.handle_EOF,
         })
 
 def MagicManholeFactory(namespace):
