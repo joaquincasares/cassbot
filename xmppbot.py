@@ -68,6 +68,7 @@ class XMPPCassBotAdapter(cassbot.CassBotCore):
         pass
 
 class XMPPCassBot(muc.MUCClient):
+    mode = 'xmpp'
     ping_interval = 120
     adapter_class = XMPPCassBotAdapter
     prot = None

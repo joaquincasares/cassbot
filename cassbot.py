@@ -209,6 +209,7 @@ class CassBotCore(irc.IRCClient):
         'receivedMOTD',
         'msg'
     )
+    mode = 'irc'
 
     def __init__(self, nickname='cassbot'):
         # state that will be saved and reset on this object by the service
