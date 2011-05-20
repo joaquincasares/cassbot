@@ -104,7 +104,7 @@ class Admin(BaseBotPlugin):
         except Exception:
             f = failure.Failure()
             yield bot.address_msg(user, channel, f.getErrorMessage())
-            log.err(f, "Attempting to join %r on command from %r" % (args[0], user))
+            log.err(f, "Attempting to part %r on command from %r" % (args[0], user))
         else:
             yield bot.address_msg(user, channel, 'kay.')
 

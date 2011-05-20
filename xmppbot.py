@@ -122,6 +122,13 @@ class XMPPCassBot(muc.MUCClient):
         d.addCallback(self._joinComplete)
         d.addErrback(log.err, "Could not join %s" % (room,))
 
+    def leave(self, channel, reason=None):
+        occupantJID = jid.internJID(channel)
+        r = self._getRoom(occupantJID)
+        if r is None:
+            raise Exception("No such room %r" % channel)
+        return muc.MUCClient.leave(self, r)
+
     def _joinComplete(self, room):
         userhost = room.occupantJID.userhost()
         d = defer.succeed(None)
