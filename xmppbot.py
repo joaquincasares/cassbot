@@ -7,11 +7,15 @@ from twisted.python import log
 from wokkel.client import XMPPClient
 from wokkel import muc
 import cassbot
+import types
 
 class XMPPCassBotAdapter(cassbot.CassBotCore):
     """
     Override the minimal set of methods of CassBotCore necessary to make it
     work nicely with XMPP.
+
+    TODO: admin status lookups should use bare jid, not the nick for whatever
+    room a user is in
     """
 
     def join(self, channel, key=None):
@@ -130,7 +134,9 @@ class XMPPCassBot(muc.MUCClient):
     def _onPrivateChat(self, msg):
         if not msg.hasAttribute('from'):
             return
-        return self.receivedPrivateChat(msg['from'], msg['body'])
+        for c in msg.elements(msg.uri, 'body'):
+            if len(c.children) > 0 and isinstance(c.children[-1], types.StringTypes):
+                return self.receivedPrivateChat(msg['from'], c.children[-1])
 
     def sendmsg(self, room_or_user, message):
         if self.is_room(room_or_user):
@@ -173,8 +179,7 @@ class XMPPCassBot(muc.MUCClient):
 
     def receivedPrivateChat(self, user, body):
         if self.prot:
-            return self.prot.privmsg(self.user2nick(user), self.prot.nickname,
-                                     body.encode('utf-8'))
+            return self.prot.privmsg(user, self.prot.nickname, body.encode('utf-8'))
 
     def pingServer(self):
         try:
