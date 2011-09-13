@@ -20,6 +20,8 @@ class NotAuthenticatedError(Exception):
     pass
 
 class JiraInstance:
+    num_api_tries = 3
+
     def __init__(self, base_url, projectname, shortcode=None, username=None, password=None):
         self.base_url = base_url.rstrip('/')
         self.set_shortcode(shortcode)
@@ -44,9 +46,9 @@ class JiraInstance:
         return soap.Proxy(self.make_jira_soap_url())
 
     def jira_soap_proxy_auth(self):
-        self.proxy.callRemote('login', self.username, self.password) \
-                  .addCallback(lambda auth: setattr(self, 'proxy_auth', auth)) \
-                  .addErrback(self.jira_soap_proxy_auth_failure)
+        return self.proxy.callRemote('login', self.username, self.password) \
+                         .addCallback(lambda auth: setattr(self, 'proxy_auth', auth)) \
+                         .addErrback(self.jira_soap_proxy_auth_failure)
 
     def jira_soap_proxy_auth_failure(self, f):
         log.err(f, "Could not authenticate to JIRA")
@@ -83,11 +85,18 @@ class JiraInstance:
     @defer.inlineCallbacks
     def link_ticket(self, ticketnum):
         ticket_url = self.make_link(ticketnum)
-        try:
-            ticketdata = yield self.fetch_ticket_info(ticketnum)
-        except (NotAuthenticatedError, web_error.Error), e:
-            defer.returnValue(ticket_url)
-        defer.returnValue('%s : %s' % (ticket_url, ticketdata.summary))
+        for attempt in range(self.num_api_tries):
+            try:
+                ticketdata = yield self.fetch_ticket_info(ticketnum)
+            except NotAuthenticatedError:
+                log.msg("(Not fetching JIRA ticket data; not authenticated)")
+                break
+            except web_error.Error, e:
+                log.err(None, "JIRA API problem [try %d]\n--------\n%s\n--------\n" % (attempt + 1, e.response))
+                yield self.jira_soap_proxy_auth()
+            else:
+                defer.returnValue('%s : %s' % (ticket_url, ticketdata.summary))
+        defer.returnValue(ticket_url)
 
     def reply_to_text(self, message, outputcb):
         ticketnums = weed_duplicates([int(g.group('num')) for g in self.find_ticket_references(message)])
