@@ -15,13 +15,17 @@ start_tap="$(dirname "$0")/tap.py"
 
 [ -z "$twistd" ] && twistd="$(which twistd)" || { echo "Can't find twistd." >&2; exit 1; }
 
+gitver=$(cd "$(dirname "$0")" && git log -n1 --pretty=oneline 2>/dev/null)
+
 if [ -n "$foreground" ]; then
     twistd_opts="-n -o"
+    [ -n "$gitver" ] && echo "STARTING CASSBOT $nickname at $gitver"
 elif [ "$logfile" = "<syslog>" ]; then
     twistd_opts="--syslog"
 else
     [ -n "$logfile" ] || logfile="$defdir/cassbot.log"
     twistd_opts="--logfile $logfile"
+    [ -n "$gitver" ] && echo "STARTING CASSBOT $nickname at $gitver" >> "$logfile"
 fi
 
 [ -n "$statefile" ] || statefile="$defdir/cassbot.state.db"
