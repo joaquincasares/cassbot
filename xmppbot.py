@@ -177,6 +177,9 @@ class XMPPCassBot(muc.MUCClient):
 
     def receivedGroupChat(self, room, user, body):
         channel = self.room2chan(room)
+        if user is None:
+            # anonymous message
+            return
         if user.nick == self.nickname:
             # seeing my own message
             return
