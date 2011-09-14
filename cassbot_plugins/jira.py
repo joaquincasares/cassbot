@@ -33,6 +33,9 @@ class JiraInstance:
         self.proxy_auth = None
         self.jira_soap_proxy_auth()
 
+    def __repr__(self):
+        return '<%s %s %s [%s]>' % (self.__class__.__name__, self.base_url, self.projectname, self.shortcode)
+
     def set_projectname(self, projectname):
         self.projectname = projectname
         self.projectname_re = re.compile(r'''(?:^|[[\s({<>:",@*'~])%s-(?P<num>\d+)\b''' % re.escape(projectname))
