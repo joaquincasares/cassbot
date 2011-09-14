@@ -22,12 +22,13 @@ class NotAuthenticatedError(Exception):
 class JiraInstance:
     num_api_tries = 3
 
-    def __init__(self, base_url, projectname, shortcode=None, username=None, password=None):
+    def __init__(self, base_url, projectname, shortcode=None, username=None, password=None, min_ticket=0):
         self.base_url = base_url.rstrip('/')
         self.set_shortcode(shortcode)
         self.set_projectname(projectname)
         self.username = username
         self.password = password
+        self.min_ticket = min_ticket
         self.proxy = self.jira_soap_proxy()
         self.proxy_auth = None
         self.jira_soap_proxy_auth()
@@ -67,14 +68,21 @@ class JiraInstance:
     @classmethod
     def from_save_data(cls, savedata):
         return cls(savedata['base_url'], savedata['projectname'], savedata['shortcode'],
-                   savedata['username'], savedata['password'])
+                   savedata['username'], savedata['password'], min_ticket=savedata.get('min_ticket', 0))
 
     def to_save_data(self):
         return {'base_url': self.base_url, 'projectname': self.projectname, 'shortcode': self.shortcode,
-                'username': self.username, 'password': self.password}
+                'username': self.username, 'password': self.password, 'min_ticket': self.min_ticket}
+
+    def find_short_ticket_references(self, message):
+        tickets = [int(tm.group('num')) for tm in self.shortcode_re.finditer(message)]
+        return [t for t in tickets if t >= self.min_ticket]
+
+    def find_project_ticket_references(self, message):
+        return [int(tm.group('num')) for tm in self.projectname_re.finditer(message)]
 
     def find_ticket_references(self, message):
-        return listconcat(r.finditer(message) for r in (self.shortcode_re, self.projectname_re) if r)
+        return self.find_short_ticket_references(message) + self.find_project_ticket_references(message)
 
     def make_link(self, ticketnum):
         return '%s/browse/%s-%d' % (self.base_url, self.projectname, ticketnum)
@@ -99,7 +107,7 @@ class JiraInstance:
         defer.returnValue(ticket_url)
 
     def reply_to_text(self, message, outputcb):
-        ticketnums = weed_duplicates([int(g.group('num')) for g in self.find_ticket_references(message)])
+        ticketnums = weed_duplicates(self.find_ticket_references(message))
         return defer.DeferredList([self.link_ticket(tnum).addCallback(outputcb) for tnum in ticketnums])
 
 class JiraIntegration(BaseBotPlugin):
@@ -137,6 +145,10 @@ class JiraIntegration(BaseBotPlugin):
     @require_priv('admin')
     @defer.inlineCallbacks
     def command_add_jira(self, bot, user, channel, args):
+        tmin = 0
+        if args[-1].startswith('min='):
+            tmin = int(args[-1].split('=', 1)[1])
+            args = args[:-1]
         if len(args) == 2:
             args = list(args) + [None]
         if len(args) == 3:
@@ -144,9 +156,9 @@ class JiraIntegration(BaseBotPlugin):
         if len(args) == 5:
             base_url, projectname, shortcode, username, password = args
         else:
-            yield bot.address_msg(user, channel, 'usage: add-jira <base_url> <projectname> [<shortcode> [<username> <password>]]')
+            yield bot.address_msg(user, channel, 'usage: add-jira <base_url> <projectname> [<shortcode> [<username> <password>]] [min=<N>]')
             return
-        self.jira_instances.append(JiraInstance(base_url, projectname, shortcode, username, password))
+        self.jira_instances.append(JiraInstance(base_url, projectname, shortcode, username, password, min_ticket=tmin))
 
     @require_priv('admin')
     @defer.inlineCallbacks
