@@ -5,7 +5,7 @@ from twisted.words.xish import domish
 from twisted.internet import task, defer
 from twisted.python import log
 from wokkel.client import XMPPClient
-from wokkel import muc
+from wokkel import muc, xmppim
 import cassbot
 import types
 
@@ -79,6 +79,7 @@ class XMPPCassBot(muc.MUCClient):
     mode = 'xmpp'
     ping_interval = 120
     adapter_class = XMPPCassBotAdapter
+    availability_status = 'IM IN UR HIPZ, CHATTIN UR LINKS'
     prot = None
 
     def __init__(self, botservice, nickname='cassbot'):
@@ -96,6 +97,10 @@ class XMPPCassBot(muc.MUCClient):
         prot.service = self.botservice
         prot.factory = self
         self.botservice.initialize_proto_state(prot)
+
+        initial_presence = xmppim.AvailabilityPresence(status=self.availability_status)
+        self.xmlstream.send(initial_presence.toElement())
+
         prot.signedOn()
 
     def resetDelay(self):
