@@ -1,7 +1,7 @@
 import re
 from string import Template
 from itertools import chain
-from twisted.internet import defer
+from twisted.internet import defer, error
 from twisted.python import log
 from twisted.web import soap, error as web_error
 from cassbot import BaseBotPlugin, mask_matches, require_priv
@@ -105,6 +105,11 @@ class JiraInstance:
             except web_error.Error, e:
                 log.err(None, "JIRA API problem [try %d]\n--------\n%s\n--------\n" % (attempt + 1, e.response))
                 yield self.jira_soap_proxy_auth()
+            except error.ConnectError, e:
+                log.err(None, "JIRA connection error [try %d]\n--------\n%s\n--------\n" % (attempt + 1, e))
+            except Exception, e:
+                log.err(None, "Unexpected error fetching JIRA ticket data.")
+                break
             else:
                 defer.returnValue('%s : %s' % (ticket_url, ticketdata.summary))
         defer.returnValue(ticket_url)
